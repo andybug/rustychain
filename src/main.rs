@@ -1,4 +1,7 @@
+mod block;
+use block::Block;
 
 fn main() {
-    println!("initial commit");
+    let b = Block::new();
+    print!("{}", b);
 }
