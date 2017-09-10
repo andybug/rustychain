@@ -1,21 +1,47 @@
 extern crate rustc_serialize;
+extern crate bincode;
+extern crate crypto;
 
 use std::fmt;
 use self::rustc_serialize::hex::ToHex;
+use self::crypto::digest::Digest;
+use self::crypto::sha2::Sha256;
 
 
-const BLOCKHASH_BYTES: usize = 32;
+pub const BLOCKHASH_BYTES: usize = 32;
 
-#[derive(Copy,Clone)]
-struct BlockHash {
+#[derive(Copy, Clone, Serialize, Deserialize, PartialEq)]
+pub struct BlockHash {
     digest: [u8; BLOCKHASH_BYTES],
 }
 
 impl BlockHash {
-    fn new() -> BlockHash {
+    pub fn new() -> BlockHash {
         BlockHash {
             digest: [0u8; BLOCKHASH_BYTES],
         }
+    }
+
+    pub fn hash(b: &Block) -> BlockHash {
+        // serialize struct to little endian vector of u8
+        let limit = bincode::Bounded(76);
+        let encoded: Vec<u8> = bincode::serialize(b, limit).unwrap();
+        //println!("encoded='{}'", encoded.to_hex());
+
+        let mut bhash = BlockHash::new();
+        let mut sha = Sha256::new();
+
+        // first round of hashing
+        sha.input(&encoded);
+        sha.result(&mut bhash.digest);
+
+        sha.reset();
+
+        // second round of hashing
+        sha.input(&bhash.digest);
+        sha.result(&mut bhash.digest);
+
+        bhash
     }
 }
 
@@ -27,6 +53,7 @@ impl fmt::Display for BlockHash {
 
 
 
+#[derive(Copy, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Block {
     version: u32,
     timestamp: u64,
@@ -38,7 +65,7 @@ impl Block {
     pub fn new() -> Block {
         Block {
             version: 1,
-            timestamp: 0,
+            timestamp: 1505011575,
             prev: BlockHash::new(),
             merkle_root: BlockHash::new(),
         }

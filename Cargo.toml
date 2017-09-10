@@ -4,7 +4,10 @@ version = "0.1.0"
 authors = ["Andrew Fields <andybug10@gmail.com>"]
 
 [dependencies]
-rustc-serialize = "0.3.24"
+rustc-serialize = "*"
+bincode = "*"
+serde = "*"
+serde_derive = "*"
 #time = "0.1"
 #byteorder = "1.1.0"
-#rust-crypto = "0.2.36"
+rust-crypto = "*"
