@@ -3,6 +3,7 @@ extern crate bincode;
 extern crate crypto;
 
 use std::fmt;
+use std::time::{SystemTime, UNIX_EPOCH};
 use self::rustc_serialize::hex::ToHex;
 use self::crypto::digest::Digest;
 use self::crypto::sha2::Sha256;
@@ -10,7 +11,7 @@ use self::crypto::sha2::Sha256;
 
 pub const BLOCKHASH_BYTES: usize = 32;
 
-#[derive(Copy, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Eq, Hash, Copy, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BlockHash {
     digest: [u8; BLOCKHASH_BYTES],
 }
@@ -65,19 +66,32 @@ impl Block {
     pub fn new() -> Block {
         Block {
             version: 1,
-            timestamp: 1505011575,
+            timestamp: 0,
             prev: BlockHash::new(),
             merkle_root: BlockHash::new(),
         }
+    }
+
+    pub fn set_timestamp(&mut self, ts: u64) {
+        self.timestamp = ts;
+    }
+
+    pub fn set_timestamp_now(&mut self) {
+        let start = SystemTime::now();
+        let since_epoch = start.duration_since(UNIX_EPOCH).unwrap();
+        self.timestamp = since_epoch.as_secs();
     }
 }
 
 impl fmt::Display for Block {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "--- block ---\n").expect("write error");
-        write!(f, "version:     {}\n", self.version).expect("write error");
-        write!(f, "timestamp:   {}\n", self.timestamp).expect("write error");
-        write!(f, "prev:        {}\n", self.prev).expect("write error");
-        write!(f, "merkle_root: {}\n", self.merkle_root)
+        let blockhash = BlockHash::hash(&self);
+        write!(f, "--- block ---\n").unwrap();
+        write!(f, "version:     {}\n", self.version).unwrap();
+        write!(f, "timestamp:   {}\n", self.timestamp).unwrap();
+        write!(f, "prev:        {}\n", self.prev).unwrap();
+        write!(f, "merkle_root: {}\n", self.merkle_root).unwrap();
+        write!(f, "_blockhash:  {}\n", blockhash).unwrap();
+        write!(f, "-------------\n")
     }
 }

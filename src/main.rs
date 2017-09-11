@@ -2,12 +2,12 @@
 extern crate serde_derive;
 
 mod block;
-use block::{Block, BlockHash};
+use block::Block;
 
 fn main() {
-    let b = Block::new();
+    let mut b = Block::new();
     print!("{}", b);
 
-    let bh = BlockHash::hash(&b);
-    println!("blockhash='{}'", bh);
+    b.set_timestamp_now();
+    print!("{}", b);
 }
