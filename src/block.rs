@@ -72,14 +72,18 @@ impl Block {
         }
     }
 
-    pub fn set_timestamp(&mut self, ts: u64) {
-        self.timestamp = ts;
-    }
+    //pub fn set_timestamp(&mut self, ts: u64) {
+    //    self.timestamp = ts;
+    //}
 
     pub fn set_timestamp_now(&mut self) {
         let start = SystemTime::now();
         let since_epoch = start.duration_since(UNIX_EPOCH).unwrap();
         self.timestamp = since_epoch.as_secs();
+    }
+
+    pub fn set_prev(&mut self, p: BlockHash) {
+        self.prev = p;
     }
 }
 
