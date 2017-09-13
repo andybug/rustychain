@@ -1,6 +1,8 @@
 #[macro_use]
 extern crate serde_derive;
 
+use std::path::Path;
+
 mod block;
 mod chain;
 
@@ -18,5 +20,6 @@ fn main() {
     add_shiz(&mut chain);
     add_shiz(&mut chain);
 
+    chain.write_chain(Path::new("/home/andy/tmp/rc"));
     println!("{}", chain);
 }
