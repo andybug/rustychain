@@ -3,11 +3,8 @@ extern crate serde_derive;
 
 use std::path::Path;
 
-mod block;
-mod chain;
-
-use block::Block;
-use chain::BlockChain;
+mod blockchain;
+use blockchain::{Block, BlockChain};
 
 fn add_shiz(chain: &mut BlockChain) {
     let mut b = Box::new(Block::new());

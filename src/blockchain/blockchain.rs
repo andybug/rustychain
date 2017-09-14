@@ -7,7 +7,7 @@ use std::path::Path;
 //use std::collections::HashMap;
 use std::collections::LinkedList;
 
-use block::{Block, BlockHash};
+use blockchain::{Block, BlockHash};
 
 
 pub struct BlockChain {
