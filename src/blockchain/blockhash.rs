@@ -90,9 +90,7 @@ impl<'de> Deserialize<'de> for BlockHash {
             {
                 let byte_vec = s.from_hex().unwrap();
                 let mut digest = [0u8; BLOCKHASH_BYTES];
-                for i in 0..BLOCKHASH_BYTES {
-                    digest[i] = byte_vec[i];
-                }
+                digest.copy_from_slice(&byte_vec);
                 Ok(BlockHash { digest: digest })
             }
 
