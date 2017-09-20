@@ -6,7 +6,7 @@ use std::fs;
 use std::path::Path;
 
 mod blockchain;
-use blockchain::{Block, BlockChain};
+use blockchain::BlockChain;
 
 mod util;
 

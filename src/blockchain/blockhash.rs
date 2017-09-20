@@ -1,14 +1,9 @@
-extern crate crypto;
 extern crate serde;
 
 use std::fmt;
 
-use self::crypto::digest::Digest;
-use self::crypto::sha2::Sha256;
 use self::serde::ser::{Serialize, Serializer};
 use self::serde::de::{Visitor, Deserialize, Deserializer};
-
-use blockchain::Block;
 
 //mod util;
 use util::hex::{FromHex, ToHex};
@@ -28,30 +23,11 @@ impl BlockHash {
         }
     }
 
-    pub fn hash(b: &Block) -> BlockHash {
-        // serialize struct to little endian vector of u8
-        let encoded: Vec<u8> = b.to_bytes();
-        //println!("encoded='{}'", encoded.to_hex());
-
+    pub fn from(digest: &[u8]) -> BlockHash {
         let mut bhash = BlockHash::new();
-        let mut sha = Sha256::new();
-
-        // first round of hashing
-        sha.input(&encoded);
-        sha.result(&mut bhash.digest);
-
-        sha.reset();
-
-        // second round of hashing
-        sha.input(&bhash.digest);
-        sha.result(&mut bhash.digest);
-
+        bhash.digest.copy_from_slice(digest);
         bhash
     }
-
-    //fn to_string(&self) -> String {
-    //    self.digest.to_hex()
-    //}
 
     pub fn get_digest(&self) -> &[u8] {
         &self.digest

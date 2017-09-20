@@ -10,7 +10,7 @@ use std::path::Path;
 //use std::collections::HashMap;
 use std::collections::LinkedList;
 
-use blockchain::{Block, BlockHash};
+use blockchain::Block;
 
 
 pub struct BlockChain {
@@ -29,7 +29,7 @@ impl BlockChain {
     pub fn append(&mut self, mut block: Box<Block>) {
         match self.chain.back() {
             Some(tail) => {
-                let blockhash = BlockHash::hash(&tail);
+                let blockhash = tail.get_hash();
                 block.set_previous(blockhash);
             },
             None => {},
@@ -81,7 +81,7 @@ impl BlockChain {
 impl fmt::Display for BlockChain {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, ref block) in self.chain.iter().enumerate() {
-            let blockhash = BlockHash::hash(&block);
+            let blockhash = block.get_hash();
             write!(f, "{:08}: {}\n", i, blockhash).unwrap();
         }
 
