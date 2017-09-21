@@ -1,5 +1,6 @@
 extern crate serde_yaml;
 
+use std::collections::LinkedList;
 use std::fmt;
 use std::fs;
 use std::fs::File;
@@ -7,8 +8,6 @@ use std::io::BufReader;
 use std::io::prelude::*;
 use std::io::Write;
 use std::path::Path;
-//use std::collections::HashMap;
-use std::collections::LinkedList;
 
 use blockchain::Block;
 
@@ -51,7 +50,6 @@ impl BlockChain {
 
         for ref block in self.chain.iter() {
             let serialized = serde_yaml::to_string(block).unwrap();
-            //f.write(serialized.as_bytes()).unwrap();
             write!(f, "{}\n", serialized).unwrap();
         }
     }
@@ -66,7 +64,7 @@ impl BlockChain {
             let f = File::open(file.path()).unwrap();
             let mut reader = BufReader::new(f);
             let mut contents = String::new();
-            reader.read_to_string(&mut contents).unwrap();
+            reader.read_to_string(&mut contents)?;
 
             let yaml_blocks: Vec<&str> = contents.split("---").collect();
             for yaml_block in &yaml_blocks[1..] {
@@ -82,7 +80,7 @@ impl fmt::Display for BlockChain {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, ref block) in self.chain.iter().enumerate() {
             let blockhash = block.get_hash();
-            write!(f, "{:08}: {}\n", i, blockhash).unwrap();
+            write!(f, "{:08}: {}\n", i, blockhash)?;
         }
 
         Ok(())

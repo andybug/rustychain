@@ -5,7 +5,6 @@ use std::fmt;
 use self::serde::ser::{Serialize, Serializer};
 use self::serde::de::{Visitor, Deserialize, Deserializer};
 
-//mod util;
 use util::hex::{FromHex, ToHex};
 
 
