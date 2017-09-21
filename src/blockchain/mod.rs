@@ -1,8 +1,6 @@
 
 mod block;
-mod blockhash;
-mod blockchain;
+mod chain;
 
 pub use self::block::Block;
-pub use self::blockhash::{BlockHash, BLOCKHASH_BYTES};
-pub use self::blockchain::BlockChain;
+pub use self::chain::BlockChain;

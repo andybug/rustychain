@@ -1,5 +1,4 @@
 extern crate byteorder;
-extern crate crypto;
 extern crate serde;
 
 use std::fmt;
@@ -7,18 +6,19 @@ use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use self::byteorder::{LittleEndian, WriteBytesExt};
-use self::crypto::digest::Digest;
-use self::crypto::sha2::Sha256;
+//use self::serde::ser::{Serialize, Serializer};
+use self::serde::de::{Visitor, Deserialize, Deserializer, MapAccess, SeqAccess};
 
-use blockchain::{BlockHash, BLOCKHASH_BYTES};
+use util::hash::{Hash256, HASH256_BYTES};
+use util::hex::{FromHex, ToHex};
 
 
-#[derive(Copy, Clone, Serialize, Deserialize, PartialEq)]
+//#[derive(Copy, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Block {
     version: u32,
     timestamp: u64,
-    previous: BlockHash,
-    merkle_root: BlockHash,
+    previous: [u8; HASH256_BYTES],
+    merkle_root: [u8; HASH256_BYTES],
 }
 
 impl Block {
@@ -26,8 +26,8 @@ impl Block {
         Block {
             version: 1,
             timestamp: 0,
-            previous: BlockHash::new(),
-            merkle_root: BlockHash::new(),
+            previous: [0u8; HASH256_BYTES],
+            merkle_root: [0u8; HASH256_BYTES],
         }
     }
 
@@ -37,46 +37,114 @@ impl Block {
         self.timestamp = since_epoch.as_secs();
     }
 
-    pub fn set_previous(&mut self, p: BlockHash) {
-        self.previous = p;
+    pub fn set_previous(&mut self, p: &[u8; HASH256_BYTES]) {
+        self.previous.copy_from_slice(p);
     }
 
-    pub fn get_hash(&self) -> BlockHash {
-        const NUM_BYTES: usize = 76;
-        let mut vec = Vec::with_capacity(NUM_BYTES);
+    pub fn get_previous(&self) -> &[u8] {
+        &self.previous
+    }
 
-        // write struct fields to buffer (little endian)
-        vec.write_u32::<LittleEndian>(self.version).unwrap();
-        vec.write_u64::<LittleEndian>(self.timestamp).unwrap();
-        vec.write_all(self.previous.get_digest()).unwrap();
-        vec.write_all(self.merkle_root.get_digest()).unwrap();
-        assert_eq!(vec.len(), NUM_BYTES);
+    pub fn get_hash(&self, mut buf: &mut [u8]) {
+        let mut hash = Hash256::new();
 
-        let mut sha = Sha256::new();
-        let mut buf: [u8; BLOCKHASH_BYTES] = [0u8; BLOCKHASH_BYTES];
+        hash.write_u32::<LittleEndian>(self.version).unwrap();
+        hash.write_u64::<LittleEndian>(self.timestamp).unwrap();
+        hash.write_all(&self.previous).unwrap();
+        hash.write_all(&self.merkle_root).unwrap();
 
-        // first round of hashing
-        sha.input(&vec);
-        sha.result(&mut buf);
-
-        // second round of hashing
-        sha.reset();
-        sha.input(&buf);
-        sha.result(&mut buf);
-
-        BlockHash::from(&buf)
+        hash.finalize(&mut buf);
     }
 }
 
 impl fmt::Display for Block {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let blockhash = self.get_hash();
+        let mut hash = [0u8; HASH256_BYTES];
+        self.get_hash(&mut hash);
+
         write!(f, "--- block ---\n").unwrap();
         write!(f, "version:     {}\n", self.version).unwrap();
         write!(f, "timestamp:   {}\n", self.timestamp).unwrap();
-        write!(f, "previous:    {}\n", self.previous).unwrap();
-        write!(f, "merkle_root: {}\n", self.merkle_root).unwrap();
-        write!(f, "_blockhash:  {}\n", blockhash).unwrap();
+        write!(f, "previous:    {}\n", self.previous.to_hex()).unwrap();
+        write!(f, "merkle_root: {}\n", self.merkle_root.to_hex()).unwrap();
+        write!(f, "_hash:       {}\n", hash.to_hex()).unwrap();
         write!(f, "-------------\n")
+    }
+}
+
+impl<'de> Deserialize<'de> for Block {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where D: Deserializer<'de>
+    {
+        #[derive(Deserialize)]
+        #[serde(field_identifier, rename_all = "lowercase")]
+        enum Field { Version, Timestamp, Previous, Merkle_root };
+
+        struct BlockVisitor;
+
+        impl<'de> Visitor<'de> for BlockVisitor {
+            type Value = Block;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("block map")
+            }
+
+            fn visit_map<V>(self, mut map: V) -> Result<Block, V::Error>
+                where V: MapAccess<'de>
+            {
+                let mut version: Option<u32> = None;
+                let mut timestamp: Option<u64> = None;
+                let mut previous: Option<String> = None;
+                let mut merkle_root: Option<String> = None;
+
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::Version => {
+                            if version.is_some() {
+                                return Err(serde::de::Error::duplicate_field("version"));
+                            }
+                            version = Some(map.next_value()?);
+                        },
+                        Field::Timestamp => {
+                            if timestamp.is_some() {
+                                return Err(serde::de::Error::duplicate_field("timestamp"));
+                            }
+                            timestamp = Some(map.next_value()?);
+                        },
+                        Field::Previous => {
+                            if previous.is_some() {
+                                return Err(serde::de::Error::duplicate_field("previous"));
+                            }
+                            previous = Some(map.next_value()?);
+                        },
+                        Field::Merkle_root => {
+                            if merkle_root.is_some() {
+                                return Err(serde::de::Error::duplicate_field("merkle_root"));
+                            }
+                            merkle_root = Some(map.next_value()?);
+                        },
+                    }
+                }
+
+                let mut block = Block {
+                    version: version.unwrap(),
+                    timestamp: timestamp.unwrap(),
+                    previous: [0u8; HASH256_BYTES],
+                    merkle_root: [0u8; HASH256_BYTES],
+                };
+
+                let previous_vec = previous.unwrap().from_hex().unwrap();
+                block.previous.copy_from_slice(&previous_vec);
+
+                let merkle_root_vec = merkle_root.unwrap().from_hex().unwrap();
+                block.merkle_root.copy_from_slice(&merkle_root_vec);
+
+                Ok(block)
+            }
+
+        }
+
+        const FIELDS: &'static [&'static str] = &["version", "timestamp", "previous", "merkle_root"];
+        deserializer.deserialize_struct("Block", FIELDS, BlockVisitor)
     }
 }
