@@ -3,12 +3,12 @@ extern crate serde;
 
 use std::fmt;
 use std::io::Write;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use self::byteorder::{LittleEndian, WriteBytesExt};
 //use self::serde::ser::{Serialize, Serializer};
 use self::serde::de::{Visitor, Deserialize, Deserializer, MapAccess, SeqAccess};
 
+use blockchain::Transaction;
 use util::hash::{Hash256, HASH256_BYTES};
 use util::hex::{FromHex, ToHex};
 
@@ -19,6 +19,7 @@ pub struct Block {
     timestamp: u64,
     previous: [u8; HASH256_BYTES],
     merkle_root: [u8; HASH256_BYTES],
+    transactions: Vec<Transaction>,
 }
 
 impl Block {
@@ -28,13 +29,12 @@ impl Block {
             timestamp: 0,
             previous: [0u8; HASH256_BYTES],
             merkle_root: [0u8; HASH256_BYTES],
+            transactions: Vec::new(),
         }
     }
 
-    pub fn set_timestamp_now(&mut self) {
-        let start = SystemTime::now();
-        let since_epoch = start.duration_since(UNIX_EPOCH).unwrap();
-        self.timestamp = since_epoch.as_secs();
+    pub fn set_timestamp(&mut self, ts: u64) {
+        self.timestamp = ts;
     }
 
     pub fn set_previous(&mut self, p: &[u8; HASH256_BYTES]) {
@@ -43,6 +43,10 @@ impl Block {
 
     pub fn get_previous(&self) -> &[u8] {
         &self.previous
+    }
+
+    pub fn add_transaction(&mut self, tx: Transaction) {
+        self.transactions.push(tx);
     }
 
     pub fn get_hash(&self, mut buf: &mut [u8]) {
@@ -62,13 +66,16 @@ impl fmt::Display for Block {
         let mut hash = [0u8; HASH256_BYTES];
         self.get_hash(&mut hash);
 
-        write!(f, "--- block ---\n").unwrap();
+        write!(f, "block _hash: {}\n", hash.to_hex()).unwrap();
         write!(f, "version:     {}\n", self.version).unwrap();
         write!(f, "timestamp:   {}\n", self.timestamp).unwrap();
         write!(f, "previous:    {}\n", self.previous.to_hex()).unwrap();
         write!(f, "merkle_root: {}\n", self.merkle_root.to_hex()).unwrap();
-        write!(f, "_hash:       {}\n", hash.to_hex()).unwrap();
-        write!(f, "-------------\n")
+        write!(f, "transactions:\n").unwrap();
+        for tx in &self.transactions {
+            write!(f, "{}", tx).unwrap();
+        }
+        write!(f, "\n")
     }
 }
 
@@ -131,6 +138,7 @@ impl<'de> Deserialize<'de> for Block {
                     timestamp: timestamp.unwrap(),
                     previous: [0u8; HASH256_BYTES],
                     merkle_root: [0u8; HASH256_BYTES],
+                    transactions: Vec::new(),
                 };
 
                 let previous_vec = previous.unwrap().from_hex().unwrap();
